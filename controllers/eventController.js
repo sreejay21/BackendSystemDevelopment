@@ -1,13 +1,11 @@
 const { events, users } = require("../store");
+const apiResponse = require("../utils/apiResponse");
+const commonMessages = require("../utils/constants");
 
-// CREATE EVENT (organizers only)
 const createEvent = async (req, res) => {
   const { date, time, description } = req.body;
 
-  if (!date || !time || !description) {
-    return res.status(400).json({ message: "Missing fields" });
-  }
-
+  // Since express-validator already validated, no need for manual checks
   const event = {
     id: events.length + 1,
     date,
@@ -18,22 +16,22 @@ const createEvent = async (req, res) => {
   };
 
   events.push(event);
-  res.status(201).json(event);
+  apiResponse.successCreate(res, event);
 };
 
-// GET ALL EVENTS
+// GET all events
 const getEvents = async (req, res) => {
-  res.json(events);
+  apiResponse.successGet(res, events);
 };
 
-// UPDATE EVENT (only organizer)
+// UPDATE event
 const updateEvent = async (req, res) => {
   const { id } = req.params;
   const event = events.find((e) => e.id === parseInt(id));
 
-  if (!event) return res.status(404).json({ message: "Event not found" });
+  if (!event) return apiResponse.getErrorResult(commonMessages.EventNotFound, res);
   if (event.organizerId !== req.user.id) {
-    return res.status(403).json({ message: "Not authorized" });
+    return apiResponse.forbidden(res, commonMessages.NotAuthorized);
   }
 
   const { date, time, description } = req.body;
@@ -44,36 +42,36 @@ const updateEvent = async (req, res) => {
   res.json(event);
 };
 
-// DELETE EVENT (only organizer)
+// DELETE event
 const deleteEvent = async (req, res) => {
   const { id } = req.params;
   const index = events.findIndex((e) => e.id === parseInt(id));
 
-  if (index === -1) return res.status(404).json({ message: "Event not found" });
+  if (index === -1) return apiResponse.notFound(res, commonMessages.EventNotFound);
   if (events[index].organizerId !== req.user.id) {
-    return res.status(403).json({ message: "Not authorized" });
+    return apiResponse.forbidden(res, commonMessages.NotAuthorized);
   }
 
   events.splice(index, 1);
-  res.json({ message: "Event deleted" });
+  apiResponse.successDelete(res, commonMessages.EventDeleted);
 };
 
-// REGISTER FOR EVENT (attendees)
+// REGISTER for event
 const registerForEvent = async (req, res) => {
   const { id } = req.params;
   const event = events.find((e) => e.id === parseInt(id));
 
-  if (!event) return res.status(404).json({ message: "Event not found" });
+  if (!event) return apiResponse.notFound(res, commonMessages.EventNotFound);
 
   const user = users.find((u) => u.id === req.user.id);
-  if (!user) return res.status(404).json({ message: "User not found" });
+  if (!user) return apiResponse.notFound(res, commonMessages.UserNotFound);
 
   if (event.participants.includes(user.id)) {
-    return res.status(400).json({ message: "Already registered" });
+    return apiResponse.badRequest(res, commonMessages.AlreadyRegistered);
   }
 
   event.participants.push(user.id);
-  res.json({ message: "Registered successfully", event });
+  apiResponse.Ok(res, { message: commonMessages.EventCreated, event });
 };
 
 module.exports = {

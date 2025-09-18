@@ -2,44 +2,56 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { users } = require("../store");
 const { sendMail } = require("../mailer");
-
+const { validationResult } = require("express-validator");
+const APIResponse = require("../utils/apiResponse");
+const commonMessages = require("../utils/constants");
 // REGISTER
 const registerUser = async (req, res) => {
-  const { email, password, role } = req.body;
-  if (!email || !password || !role) {
-    return res.status(400).json({ message: "Missing fields" });
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return APIResponse.getValidationError(res, errors.array());
   }
+
+  const { email, password, role } = req.body;
 
   const existing = users.find((u) => u.email === email);
   if (existing) {
-    return res.status(400).json({ message: "User exists" });
+   return APIResponse.badRequest(res, commonMessages.EmailAlreadyExists);
   }
 
+  // Hash password
   const passwordHash = await bcrypt.hash(password, 10);
   const user = { id: users.length + 1, email, passwordHash, role };
   users.push(user);
 
-  // ⚠️ sendMail can break tests if SMTP isn’t configured
+  // Send welcome email
   try {
-    await sendMail(email, "Welcome!", "Thanks for registering!");
+    await sendMail(email, commonMessages.WelcomeMailSubject);
   } catch (err) {
     console.error("Email send failed:", err.message);
   }
 
-  res.status(201).json({ message: "User registered" });
+   APIResponse.successCreate(res, { id: user.id, email: user.email, role: user.role });
 };
 
 // LOGIN
 const loginUser = async (req, res) => {
+  // Check for validation errors
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return APIResponse.getValidationError(res, errors.array());
+  }
+
   const { email, password } = req.body;
+
   const user = users.find((u) => u.email === email);
   if (!user) {
-    return res.status(400).json({ message: "Invalid credentials" });
+    return APIResponse.badRequest(res, commonMessages.InvalidCredentials);
   }
 
   const valid = await bcrypt.compare(password, user.passwordHash);
   if (!valid) {
-    return res.status(400).json({ message: "Invalid credentials" });
+    return APIResponse.badRequest(res, commonMessages.InvalidCredentials);
   }
 
   const token = jwt.sign(
