@@ -1,7 +1,7 @@
 module.exports = {
   // success reponses
-  Ok: function (msh, res) {
-    res.status(200).send({ status: true, responsecode: 200, result: msh })
+  Ok: function (result, res) {
+    res.status(200).send({ status: true, responsecode: 200, result })
   },
   successCreate: function (result, res) {
     res.status(201).send({ status: true, responsecode: 201, result })

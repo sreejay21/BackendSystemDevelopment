@@ -16,12 +16,12 @@ const createEvent = async (req, res) => {
   };
 
   events.push(event);
-  apiResponse.successCreate(res, event);
+  apiResponse.successCreate(event, res);
 };
 
 // GET all events
 const getEvents = async (req, res) => {
-  apiResponse.successGet(res, events);
+  apiResponse.Ok(events, res);
 };
 
 // UPDATE event
@@ -71,7 +71,10 @@ const registerForEvent = async (req, res) => {
   }
 
   event.participants.push(user.id);
-  apiResponse.Ok(res, { message: commonMessages.EventCreated, event });
+  const result = {
+    event,
+  };
+  apiResponse.Ok(result, res);
 };
 
 module.exports = {

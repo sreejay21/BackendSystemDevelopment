@@ -16,7 +16,7 @@ const registerUser = async (req, res) => {
 
   const existing = users.find((u) => u.email === email);
   if (existing) {
-   return APIResponse.badRequest(res, commonMessages.EmailAlreadyExists);
+    return APIResponse.badRequest(res, commonMessages.EmailAlreadyExists);
   }
 
   // Hash password
@@ -26,12 +26,16 @@ const registerUser = async (req, res) => {
 
   // Send welcome email
   try {
-    await sendMail(email, commonMessages.WelcomeMailSubject);
+    await sendMail(email, commonMessages.WelcomeMailSubject, commonMessages.WelcomeMailBody);
   } catch (err) {
     console.error("Email send failed:", err.message);
   }
-
-   APIResponse.successCreate(res, { id: user.id, email: user.email, role: user.role });
+  const result = {
+    id: user.id,
+    email: user.email,
+    role: user.role
+  }
+  APIResponse.successCreate(result, res);
 };
 
 // LOGIN
