@@ -1,6 +1,6 @@
 const request = require("supertest");
 const app = require("../app");
-const { users, events } = require("../store");
+const store = require("../store");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 
@@ -8,14 +8,11 @@ describe("Events API", () => {
   let token;
 
   beforeEach(async () => {
-    // Reset in-memory arrays
-    users.length = 0;
-    events.length = 0;
+    store.reset();
 
-    // Create and login a test organizer
     const passwordHash = await bcrypt.hash("123456", 10);
     const user = { id: 1, email: "organizer@test.com", passwordHash, role: "organizer" };
-    users.push(user);
+    store.addUser(user);
 
     token = jwt.sign({ id: user.id, email: user.email, role: user.role }, process.env.JWT_SECRET, { expiresIn: "1h" });
   });
@@ -45,8 +42,7 @@ describe("Events API", () => {
 
   describe("Get Events", () => {
     it("should return all events", async () => {
-      // Prepopulate an event
-      events.push({ id: 1, date: "2025-09-21", time: "10:00", description: "Event 1", participants: [], organizerId: 1 });
+      store.addEvent({ id: 1, date: "2025-09-21", time: "10:00", description: "Event 1", participants: [], organizerId: 1 });
 
       const res = await request(app)
         .get("/api/events")
@@ -59,18 +55,18 @@ describe("Events API", () => {
 
   describe("Update Event", () => {
     it("should update event if authorized", async () => {
-      events.push({ id: 1, date: "2025-09-21", time: "10:00", description: "Old Event", participants: [], organizerId: 1 });
-      
+      store.addEvent({ id: 1, date: "2025-09-21", time: "10:00", description: "Old Event", participants: [], organizerId: 1 });
+
       const res = await request(app)
         .put("/api/events/1")
         .set("Authorization", `Bearer ${token}`)
-        .send({ description: "Updated Event" , date: "2025-09-22", time: "11:00"});
+        .send({ description: "Updated Event", date: "2025-09-22", time: "11:00" });
 
       expect(res.statusCode).toBe(200);
     });
 
     it("should return forbidden if not organizer", async () => {
-      events.push({ id: 1, date: "2025-09-21", time: "10:00", description: "Old Event", participants: [], organizerId: 2 });
+      store.addEvent({ id: 1, date: "2025-09-21", time: "10:00", description: "Old Event", participants: [], organizerId: 2 });
 
       const res = await request(app)
         .put("/api/events/1")
@@ -83,7 +79,7 @@ describe("Events API", () => {
 
   describe("Delete Event", () => {
     it("should delete event if authorized", async () => {
-      events.push({ id: 1, date: "2025-09-21", time: "10:00", description: "Event", participants: [], organizerId: 1 });
+      store.addEvent({ id: 1, date: "2025-09-21", time: "10:00", description: "Event", participants: [], organizerId: 1 });
 
       const res = await request(app)
         .delete("/api/events/1")
@@ -96,7 +92,7 @@ describe("Events API", () => {
 
   describe("Register for Event", () => {
     it("should register user for an event", async () => {
-      events.push({ id: 1, date: "2025-09-21", time: "10:00", description: "Event", participants: [], organizerId: 1 });
+      store.addEvent({ id: 1, date: "2025-09-21", time: "10:00", description: "Event", participants: [], organizerId: 1 });
 
       const res = await request(app)
         .post("/api/events/1/register")
@@ -108,7 +104,7 @@ describe("Events API", () => {
     });
 
     it("should return error if already registered", async () => {
-      events.push({ id: 1, date: "2025-09-21", time: "10:00", description: "Event", participants: [1], organizerId: 1 });
+      store.addEvent({ id: 1, date: "2025-09-21", time: "10:00", description: "Event", participants: [1], organizerId: 1 });
 
       const res = await request(app)
         .post("/api/events/1/register")
